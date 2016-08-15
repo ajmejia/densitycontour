@@ -231,6 +231,7 @@ class ContourVisualizerBase(object):
         self._xorig = 0.5 * (other.xedges[1:] + other.xedges[:-1])
         self._yorig = 0.5 * (other.yedges[1:] + other.yedges[:-1])
         self._zorig = other.pdf
+        self._ci = other.levels
         self.levelfinder = other.level_by_confidence
         return None
 
@@ -262,11 +263,26 @@ class ContourVisualizerBase(object):
                                              origin="lower", **contour_kwargs)
         return contour
 
+    def cilabel(self, contour, *clabel_args, **clabel_kwargs):
+        """Draws CI labels as clabel.
+
+        Arguments
+        ---------
+        contour: QuadContourSet object
+        """
+        fmt = clabel_kwargs.get("fmt") or "%1.3f"
+        clabel_kwargs["fmt"] = "%f"
+        cl = pylab.clabel(contour, *clabel_args, **clabel_kwargs)
+
+        for ci, lv in self._ci.iteritems():
+            for t in cl:
+                if "%f"%lv==t.get_text():
+                    t.set_text(fmt%(ci*100)+(r"\%" if pylab.rcParams["text.usetex"] else u"%"))
 
 class NaiveContourVisualizer(ContourVisualizerBase):
     """The "naive" contour visualizer.
 
-    This visualizer simply accpets the raster as it is, without any
+    This visualizer simply accepts the raster as it is, without any
     post-processing.
 
     """
@@ -351,12 +367,14 @@ def _test():
                     alpha=0.1, facecolor="green",
                     edgecolor="green", marker=".", antialiased=True)
         cont = vbackend(raster, mode="nearest")
-        cont.plot([0.9, 0.5], axes=sub, colors="black",
+        ct = cont.plot([0.9, 0.5], axes=sub, colors="black",
                   linestyles=["--", "-"], antialiased=True, alpha=0.8)
+        cont.cilabel(ct, inline=True)
         sub.set_aspect("equal", adjustable="box-forced", anchor="C")
         sub.set_ylim((-3.5, 3.5))
         sub.set_xlim((-3.5, 3.5))
         sub.set_title(titles[i], fontdict=titleft)
+    pylab.draw_all(True)
     pylab.show()
     return None
 
